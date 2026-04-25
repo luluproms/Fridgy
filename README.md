@@ -63,7 +63,7 @@ Ce projet met en œuvre une architecture distribuée complète : un objet connec
 ---
 
 ##  Auteur et Crédits
-* **Auteur :** Lucas PROMAYON (2e Année de BUT R&T - IUT de Valence)
+* **Auteur :** Lucas (2e Année de BUT R&T)
 * **[Mon Profil LinkedIn](https://www.linkedin.com/in/lucas-promayon/)**
 * **Encadrants :** M. Jamont
 * **Ressources :** Kit Adeept Arduino, Documentation OpenFoodFacts API.
