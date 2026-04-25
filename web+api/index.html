@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Frigo connecté — Tableau de bord</title>
+  <style>
+    :root{ --bg: #0b1020; --panel: rgba(255,255,255,0.06); --panel-strong: rgba(255,255,255,0.12); --text: #e7ecf4; --muted: #aab3c2; --accent: #7dd3fc; --accent-2: #a78bfa; --good: #34d399; --warn: #fbbf24; --bad: #fb7185; --card-radius: 18px; --shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06); --glass: blur(8px) saturate(130%); }
+    @media (prefers-color-scheme: light){ :root{ --bg: #f2f5fb; --panel: rgba(20,26,50,0.05); --panel-strong: rgba(20,26,50,0.08); --text:#111827; --muted:#475569; --shadow: 0 10px 30px rgba(16,24,40,.08), inset 0 1px 0 rgba(255,255,255,.6); } }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji"; color:var(--text); background: radial-gradient(1200px 800px at 10% -10%, #1a2a6c, transparent), radial-gradient(900px 700px at 110% 10%, #3b82f6, transparent), var(--bg); background-attachment: fixed; }
+    .container{ max-width:1200px; margin:0 auto; padding:28px; }
+    header{ display:grid; gap:16px; align-items:center; grid-template-columns: 1fr auto; margin-bottom: 18px; }
+    .brand{ display:flex; align-items:center; gap:12px; }
+    .logo{ width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,#22d3ee, #6366f1); box-shadow: var(--shadow); display:grid; place-items:center; }
+    .logo svg{ filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); }
+    h1{ font-size: clamp(22px, 2.2vw, 32px); margin:0; letter-spacing:.2px; }
+    .sub{ color:var(--muted); font-size:14px; }
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap; }
+    button, .chip{ border:0; border-radius:14px; padding:10px 14px; color:var(--text); background:var(--panel); backdrop-filter: var(--glass); -webkit-backdrop-filter: var(--glass); box-shadow: var(--shadow); cursor:pointer; font-weight:600; letter-spacing:.2px; transition: transform .1s ease, background .2s ease, box-shadow .2s ease; display: inline-flex; align-items: center; gap: 6px; }
+    button:hover{ transform: translateY(-1px); background:var(--panel-strong); }
+    button:active{ transform: translateY(0); }
+    /* Style spécifique pour le bouton Lock quand actif */
+    button.locked { background: rgba(251, 113, 133, 0.2); color: #fda4af; border: 1px solid rgba(251, 113, 133, 0.3); }
+    button.locked:hover { background: rgba(251, 113, 133, 0.3); }
+    
+    .chip{ font-size:12px; font-weight:700; opacity:.9; }
+    .grid{ display:grid; gap:14px; grid-template-columns: repeat(12, 1fr); }
+    .card{ grid-column: span 3; background: var(--panel); backdrop-filter: var(--glass); -webkit-backdrop-filter: var(--glass); border-radius: var(--card-radius); box-shadow: var(--shadow); padding:16px; position:relative; overflow:hidden; }
+    .card.headline{ grid-column: span 12; display:flex; align-items:center; justify-content:space-between; padding:18px 20px; }
+    .card.wide{ grid-column: span 6; }
+    .card.tall{ grid-row: span 2; }
+    .title{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.16em; font-weight:800; }
+    .value{ font-size: clamp(22px, 3.2vw, 36px); font-weight: 800; letter-spacing:.3px; }
+    .trend{ font-size:12px; font-weight:700; }
+    .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .muted{ color:var(--muted); }
+    .badge{ padding:6px 10px; border-radius:999px; font-size:12px; font-weight:800; letter-spacing:.3px; }
+    .ok{ background: rgba(52,211,153,.18); color: var(--good); }
+    .warn{ background: rgba(251,191,36,.18); color: var(--warn); }
+    .bad{ background: rgba(251,113,133,.18); color: var(--bad); }
+    .inventory{ display:grid; gap:12px; }
+    .item{ display:grid; grid-template-columns: 28px 1fr auto; gap:12px; align-items:center; padding:10px; border-radius:12px; background:var(--panel-strong); }
+    .item .dot{ width:12px; height:12px; border-radius:999px; }
+    .exp{ font-size:12px; color:var(--muted); }
+    .list{ display:grid; gap:10px; grid-template-columns: 1fr auto; align-items:start; }
+    .list input[type="text"]{ width:100%; padding:12px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.04); color:var(--text); }
+    .list .items{ grid-column: 1 / -1; display:grid; gap:8px; }
+    .list .li{ display:grid; grid-template-columns: 22px 1fr auto; gap:10px; align-items:center; padding:10px; border-radius:12px; background: var(--panel-strong); }
+    .li input[type="checkbox"]{ width:18px; height:18px; accent-color: var(--accent); }
+    .li .name.done{ text-decoration: line-through; opacity:.6; }
+    .footer{ margin: 24px 0 6px; display:flex; gap:10px; flex-wrap: wrap; justify-content:flex-end; }
+    .spark{ position:absolute; inset: -40%; background: radial-gradient(600px 600px at var(--x,50%) var(--y,50%), rgba(125,211,252,.10), transparent 60%), radial-gradient(400px 400px at calc(var(--x,50%) + 8%) calc(var(--y,50%) + 8%), rgba(167,139,250,.10), transparent 60%); pointer-events:none; mix-blend-mode: screen; }
+    .inline-svg{ width:18px; height:18px; opacity:.9; }
+    .pill{ background:linear-gradient(90deg, rgba(125,211,252,.2), rgba(167,139,250,.2)); border:1px solid rgba(255,255,255,.14); padding:8px 12px; border-radius:999px; font-weight:700; font-size:12px; letter-spacing:.3px; }
+    @keyframes pulse{ 0%{opacity:.55} 50%{opacity:1} 100%{opacity:.55} }
+    .pulse{ animation: pulse 2s infinite; }
+    .small{ font-size:12px; }
+    .kbd{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:11px; padding:2px 6px; border-radius:8px; background: rgba(255,255,255,.08); color:var(--accent); border:1px solid rgba(255,255,255,.14); }
+    @media (max-width: 980px){ .card{ grid-column: span 6; } }
+    @media (max-width: 680px){ header{ grid-template-columns: 1fr; } .card{ grid-column: span 12; } .card.headline{ flex-direction: column; align-items: flex-start; gap:10px; } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="3"/><line x1="5" y1="9" x2="19" y2="9"/><line x1="9" y1="6" x2="9" y2="8"/><line x1="15" y1="13" x2="15" y2="19"/></svg>
+        </div>
+        <div>
+          <h1>Frigo connecté — Tableau de bord</h1>
+          <div class="sub">Données temps réel (Arduino + Java + MySQL)</div>
+        </div>
+      </div>
+      <div class="toolbar">
+        <span class="pill">Device: <strong id="deviceName">FRG-Home-01</strong></span>
+        
+        <button id="btnLock" title="Verrouiller l'accès physique">
+            <svg id="iconLock" class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <span id="txtLock">Verrouiller</span>
+        </button>
+
+        <button id="btnRefresh" title="Actualiser maintenant">
+          <svg class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path><path d="M20.49 15A9 9 0 0 1 6.36 18.36L1 14"></path></svg>
+          Actualiser</button>
+      </div>
+    </header>
+
+    <div class="grid" id="grid">
+      <div class="card headline">
+        <div class="row" style="gap:14px;">
+          <div class="title">État du système</div>
+          <span id="statusBadge" class="badge ok">CONNEXION...</span>
+          <span class="small muted">Dernière mise à jour : <span id="lastUpdate">—</span></span>
+        </div>
+        <div class="row">
+          <div class="small muted">Données récupérées depuis la base de données locale.</div>
+        </div>
+        <div class="spark" aria-hidden="true"></div>
+      </div>
+
+      <div class="card" id="cardFridge">
+        <div class="title">Température (Frigo)</div>
+        <div class="row"><div class="value" id="tempFridge">--.-°C</div></div>
+        <div class="row small"><span class="muted">Cible: 3–4°C</span><span id="badgeFridge" class="badge">...</span></div>
+      </div>
+
+      <div class="card" id="cardFreezer">
+        <div class="title">Température (Congélo)</div>
+        <div class="row"><div class="value" id="tempFreezer">-18.0°C</div></div>
+        <div class="row small"><span class="muted">Cible: −18°C</span><span id="badgeFreezer" class="badge ok">Simulé</span></div>
+      </div>
+
+      <div class="card">
+        <div class="title">Humidité (Frigo)</div>
+        <div class="row"><div class="value" id="humidity">--%</div></div>
+        <div class="row small"><span class="muted">Idéal: 50–60%</span><span id="badgeHumidity" class="badge">...</span></div>
+      </div>
+
+      <div class="card">
+        <div class="title">Porte</div>
+        <div class="row"><div class="value" id="door">...</div></div>
+        <div class="row small"><span id="doorLast">Dernière lecture...</span></div>
+      </div>
+
+      <div class="card">
+        <div class="title">Puissance instantanée</div>
+        <div class="row"><div class="value" id="power">78 W</div></div>
+        <div class="row small"><span class="muted">Simulé</span></div>
+      </div>
+      <div class="card">
+        <div class="title">Wi‑Fi</div>
+        <div class="row"><div class="value" id="wifi">−58 dBm</div><span class="badge ok">Bon</span></div>
+      </div>
+
+      <div class="card wide tall">
+        <div class="row" style="margin-bottom:8px;">
+          <div class="title">Inventaire</div>
+          <div class="chip">Synchro BDD</div>
+        </div>
+        <div class="inventory" id="inventory"></div>
+      </div>
+
+      <div class="card wide tall">
+        <div class="row" style="margin-bottom:8px;">
+          <div class="title">Liste de courses</div>
+          <div class="chip">Synchro BDD</div>
+        </div>
+        <div class="list">
+          <input id="inputItem" type="text" placeholder="Ajouter un article..." />
+          <button id="btnAdd">Ajouter</button>
+          <div class="items" id="todo"></div>
+          
+          <div class="footer">
+            <button id="btnClear" title="Tout supprimer">Tout effacer</button>
+            <button id="btnSuggest" title="Ajouter des suggestions">
+               <svg class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+               Suggérer
+            </button>
+            <button id="btnDrive" style="background:var(--accent-2); color:#fff; border:none;">
+               <svg class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+               Envoyer au Drive
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+    // ------- CONFIGURATION -------
+    const API_URL = 'api.php';
+
+    // ------- ÉTAT GLOBAL -------
+    const state = {
+      temps: { fridge: 0, freezer: 0, humidity: 0 },
+      power: { w: 0, energy: 0 },
+      door: { open: false, last: "..." },
+      isLocked: false, // AJOUT DE L'ÉTAT VERROUILLAGE
+      filterLife: 84,
+      wifi: -58,
+      device: 'FRG-Home-01',
+      inventory: [],
+      shopping: []
+    };
+
+    function daysFromNow(d){ const t = new Date(); t.setDate(t.getDate()+d); return t; }
+    function fmtDate(d){ return new Intl.DateTimeFormat('fr-FR', { day:'2-digit', month:'2-digit'}).format(d); }
+    function since(dateStr){ 
+        if(!dateStr || dateStr === "Jamais") return "-";
+        const diff = Math.floor((Date.now() - new Date(dateStr).getTime())/1000/60);
+        return diff < 1 ? "à l'instant" : `il y a ${diff} min`;
+    }
+
+    // ------- API -------
+    async function fetchData() {
+        try {
+            const res = await fetch(API_URL);
+            const data = await res.json();
+            updateState(data);
+        } catch (e) {
+            console.error("Erreur API", e);
+            document.getElementById('statusBadge').className = 'badge bad';
+            document.getElementById('statusBadge').textContent = 'DECONNECTÉ';
+        }
+    }
+
+    async function sendAction(action, params = {}) {
+        const formData = new FormData();
+        for (const key in params) formData.append(key, params[key]);
+        try {
+            await fetch(`${API_URL}?action=${action}`, { method: 'POST', body: formData });
+            fetchData();
+        } catch (e) { console.error(e); }
+    }
+
+    // ------- UI UPDATE -------
+    function updateState(data) {
+        state.temps = data.temps;
+        state.door = data.door;
+        
+        // Si l'API ne renvoie pas encore l'info lock, on garde false par défaut
+        // Idéalement, il faudra ajouter "locked" => true/false dans ton api.php
+        if(data.status && data.status.locked !== undefined) {
+             state.isLocked = data.status.locked;
+        }
+
+        state.shopping = data.shopping_list.map(item => ({
+            id: item.id,
+            name: item.produit,
+            done: item.est_achete == 1
+        }));
+
+        state.inventory = data.inventory_list.map(item => ({
+            id: item.id,
+            name: item.produit,
+            qty: item.quantite,
+            exp: new Date(item.dlc)
+        }));
+
+        renderAll(data.updatedAt);
+    }
+
+    const el = (q) => document.querySelector(q);
+
+    function renderAll(lastUpdate){
+      el('#deviceName').textContent = state.device;
+      el('#lastUpdate').textContent = lastUpdate || '...';
+      el('#statusBadge').className = 'badge ok';
+      el('#statusBadge').textContent = 'CONNECTÉ';
+
+      el('#tempFridge').textContent = state.temps.fridge.toFixed(1) + "°C";
+      const t = state.temps.fridge;
+      badge(el('#badgeFridge'), t>7?'bad':(t<1?'warn':'ok'), t>7?'Chaud':(t<1?'Froid':'Stable'));
+
+      el('#tempFreezer').textContent = state.temps.freezer.toFixed(1) + "°C";
+      el('#humidity').textContent = state.temps.humidity.toFixed(0) + "%";
+      
+      const d = el('#door');
+      if(state.door.open) { d.textContent = "OUVERTE"; d.style.color = "var(--bad)"; }
+      else { d.textContent = "Fermée"; d.style.color = "var(--text)"; }
+      el('#doorLast').textContent = state.door.open ? "Attention !" : "Dernier : " + since(state.door.last);
+
+      el('#power').textContent = state.power.w + " W";
+      el('#wifi').textContent = state.wifi + " dBm";
+
+      renderInventory();
+      renderShopping();
+      renderLockState(); // Mise à jour visuelle du bouton Lock
+    }
+
+    // GESTION DU BOUTON LOCK
+    function renderLockState() {
+        const btn = el('#btnLock');
+        const txt = el('#txtLock');
+        const icon = el('#iconLock');
+
+        if(state.isLocked) {
+            btn.classList.add('locked');
+            txt.textContent = 'Déverrouiller';
+            // Icone cadenas fermé
+            icon.innerHTML = '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>';
+        } else {
+            btn.classList.remove('locked');
+            txt.textContent = 'Verrouiller';
+            // Icone cadenas ouvert
+            icon.innerHTML = '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path>';
+        }
+    }
+
+    function toggleLock() {
+        const action = state.isLocked ? 'unlock' : 'lock';
+        
+        // Optimistic UI : On change l'état visuel tout de suite pour la réactivité
+        state.isLocked = !state.isLocked;
+        renderLockState();
+
+        sendAction(action);
+    }
+
+    function badge(node, type, text){ node.className = `badge ${type}`; node.textContent = text; }
+
+    function renderShopping(){
+      const root = el('#todo');
+      root.innerHTML = '';
+      state.shopping.forEach((it)=>{
+        const d = document.createElement('div');
+        d.className = 'li';
+        d.innerHTML = `
+          <input type="checkbox" ${it.done?'checked':''} onchange="toggleDone(${it.id})" />
+          <div class="name ${it.done?'done':''}">${it.name}</div>
+          <button aria-label="Supprimer" title="Supprimer" onclick="delItem(${it.id})">
+            <svg class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>`
+        root.appendChild(d);
+      });
+    }
+
+    // ------- Rendu Inventaire -------
+    function renderInventory(){
+      const root = el('#inventory');
+      root.innerHTML = '';
+      
+      if(state.inventory.length === 0) {
+          root.innerHTML = '<div style="color:var(--muted); font-style:italic;">Frigo vide... Scannez des produits !</div>';
+          return;
+      }
+
+      state.inventory.sort((a,b)=> a.exp - b.exp).forEach((it)=>{
+          const days = Math.ceil((it.exp - new Date())/86400000);
+          let color = '#34d399';
+          if(days<=2) color = 'var(--bad)'; else if(days<=5) color = 'var(--warn)';
+          
+          root.innerHTML += `
+            <div class="item">
+                <div class="dot" style="background:${color}"></div>
+                <div style="flex:1;">
+                    <div style="font-weight:700">${it.name} <span class="muted small">×${it.qty}</span></div>
+                    <div class="exp">DLC: ${fmtDate(it.exp)} • reste ${days} j</div>
+                </div>
+                <button onclick="delInv(${it.id})" title="Consommé">
+                    <svg class="inline-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                </button>
+            </div>`;
+      });
+    }
+
+    // ------- ACTIONS -------
+    
+    function addItem(){
+      const input = el('#inputItem');
+      const v = input.value.trim();
+      if(!v) return;
+      sendAction('add_item', { nom: v });
+      input.value='';
+    }
+
+    window.toggleDone = (id) => { sendAction('toggle_item', { id: id }); };
+    window.delItem = (id) => { sendAction('delete_item', { id: id }); };
+    window.delInv = (id) => { sendAction('del_inv', { id: id }); };
+    
+    function clearAll(){ 
+        if(confirm('Vider la liste de courses ?')) sendAction('clear_list'); 
+    }
+
+    function suggestItems() {
+        const suggestions = ["Pizza (Surgelée)", "Jus d'orange", "Papier Alu"];
+        const item = suggestions[Math.floor(Math.random() * suggestions.length)];
+        if(confirm(`Ajouter "${item}" à la liste ?`)) {
+            sendAction('add_item', { nom: item });
+        }
+    }
+
+    function sendToDrive() {
+        const count = state.shopping.filter(i => !i.done).length;
+        if(count === 0) { alert("Rien à commander !"); return; }
+        
+        const prix = (count * 3.5).toFixed(2);
+        if(confirm(`Confirmer l'envoi de ${count} articles au Drive Carrefour ?\nTotal estimé : ${prix} €`)) {
+            alert(`Succès !\nCommande #FRG-${Date.now().toString().slice(-4)} transmise.\nVous pouvez passer au Drive à 18h.`);
+        }
+    }
+
+    // Bindings
+    el('#btnAdd').addEventListener('click', addItem);
+    el('#inputItem').addEventListener('keydown', (e)=>{ if(e.key==='Enter') addItem(); });
+    
+    el('#btnClear').addEventListener('click', clearAll);
+    el('#btnSuggest').addEventListener('click', suggestItems);
+    el('#btnDrive').addEventListener('click', sendToDrive);
+    
+    // Bind Lock
+    el('#btnLock').addEventListener('click', toggleLock);
+    
+    el('#btnRefresh').addEventListener('click', fetchData);
+
+    // Start
+    setInterval(fetchData, 2000);
+    fetchData();
+
+    // Effet visuel
+    const headline = document.querySelector('.card.headline');
+    headline.addEventListener('mousemove', (e)=>{
+      const spark = headline.querySelector('.spark');
+      const r = e.currentTarget.getBoundingClientRect();
+      spark.style.setProperty('--x', `${e.clientX - r.left}px`);
+      spark.style.setProperty('--y', `${e.clientY - r.top}px`);
+    });
+</script>
+</body>
+</html>
